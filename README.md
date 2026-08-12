@@ -109,7 +109,7 @@ EduAssist-AI-Chatbot/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/roshan-2708/EduAssist-AI-Chatbot.git
+git clone https://github.com/roshan-2708/ChatBot.git
 ```
 
 ### 2. Open the project folder
