@@ -5,8 +5,9 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "start": "nodemon server.js",
+    "dev": "nodemon server.js",
+    "test": "node --test test.js"
   },
   "keywords": [
     "chatbot",
@@ -14,12 +15,13 @@
     "openai",
     "education"
   ],
-  "author": "Ayush Kumar Senapati",
+  "author": "Roshan Kumar Patra",
   "license": "ISC",
   "dependencies": {
     "@google/genai": "^2.15.0",
     "cors": "^2.8.5",
     "dotenv": "^17.0.0",
-    "express": "^5.0.0"
+    "express": "^5.0.0",
+    "nodemon": "^3.1.14"
   }
 }

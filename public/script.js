@@ -1,493 +1,468 @@
+/* =========================================================
+   EDUASSIST AI STUDIO — INTERACTIVE CLIENT LOGIC
+   ========================================================= */
+
+// DOM Elements
 const chatForm = document.getElementById("chatForm");
 const userInput = document.getElementById("userInput");
 const chatMessages = document.getElementById("chatMessages");
 const sendButton = document.getElementById("sendButton");
 const clearButton = document.getElementById("clearButton");
 
+// Sidebar & Selectors
+const studioSidebar = document.getElementById("studioSidebar");
+const mobileSidebarToggle = document.getElementById("mobileSidebarToggle");
+const roleGrid = document.getElementById("roleGrid");
+const roleCards = document.querySelectorAll(".role-card");
 const roleSelector = document.getElementById("roleSelector");
-const techniqueSelector =
-  document.getElementById("techniqueSelector");
 
-const techniqueBadge =
-  document.getElementById("techniqueBadge");
+const techniquePills = document.getElementById("techniquePills");
+const techniqueChips = document.querySelectorAll(".technique-chip");
+const techniqueSelector = document.getElementById("techniqueSelector");
+const techniqueBadge = document.getElementById("techniqueBadge");
+const techniqueDescription = document.getElementById("techniqueDescription");
 
-const techniqueDescription =
-  document.getElementById("techniqueDescription");
+// Live Matrix Elements
+const currentRole = document.getElementById("currentRole");
+const currentTechnique = document.getElementById("currentTechnique");
 
-const suggestionButtons = document.querySelectorAll(
-  ".suggestion-button"
-);
+// Suggestion buttons
+const suggestionButtons = document.querySelectorAll(".suggestion-button");
 
-/* About modal elements */
-
+// About Modal Elements
 const aboutButton = document.getElementById("aboutButton");
 const aboutModal = document.getElementById("aboutModal");
+const closeAboutButton = document.getElementById("closeAboutButton");
+const closeAboutFooterButton = document.getElementById("closeAboutFooterButton");
 
-const closeAboutButton =
-  document.getElementById("closeAboutButton");
-
-const closeAboutFooterButton =
-  document.getElementById("closeAboutFooterButton");
-
-/* Prompt preview modal elements */
-
-const viewPromptButton =
-  document.getElementById("viewPromptButton");
-
+// Prompt Preview Modal Elements
+const viewPromptButton = document.getElementById("viewPromptButton");
 const promptModal = document.getElementById("promptModal");
-
-const closePromptButton =
-  document.getElementById("closePromptButton");
-
-const closePromptFooterButton =
-  document.getElementById("closePromptFooterButton");
-
-const copyPromptButton =
-  document.getElementById("copyPromptButton");
-
-const finalPromptPreview =
-  document.getElementById("finalPromptPreview");
-
-const promptPreviewRole =
-  document.getElementById("promptPreviewRole");
-
-const promptPreviewTechnique =
-  document.getElementById("promptPreviewTechnique");
-
-const promptPreviewQuestion =
-  document.getElementById("promptPreviewQuestion");
-
-/* Configuration panel elements */
-
-const currentRole =
-  document.getElementById("currentRole");
-
-const currentTechnique =
-  document.getElementById("currentTechnique");
+const closePromptButton = document.getElementById("closePromptButton");
+const closePromptFooterButton = document.getElementById("closePromptFooterButton");
+const copyPromptButton = document.getElementById("copyPromptButton");
+const finalPromptPreview = document.getElementById("finalPromptPreview");
+const promptPreviewRole = document.getElementById("promptPreviewRole");
+const promptPreviewTechnique = document.getElementById("promptPreviewTechnique");
 
 let lastUserMessage = "";
 
+// Technique knowledge dictionary
 const techniqueInformation = {
   "zero-shot": {
     badge: "Zero-Shot",
-    description:
-      "The AI answers directly without receiving any sample answer.",
+    description: "Direct prompting without sample examples for direct, concise answers.",
   },
-
   "one-shot": {
     badge: "One-Shot",
-    description:
-      "The AI receives one example before answering the user's question.",
+    description: "AI is provided with 1 high-quality example to guide formatting and tone.",
   },
-
   "few-shot": {
     badge: "Few-Shot",
-    description:
-      "The AI receives multiple examples to understand the expected response style.",
+    description: "AI is provided with multiple varied examples to match exact response patterns.",
   },
-
   "role-based": {
     badge: "Role-Based",
-    description:
-      "The AI behaves according to the selected professional or educational role.",
+    description: "Strictly adopts the selected professional domain persona and behavioral constraints.",
   },
-
   "structured-reasoning": {
     badge: "Structured Reasoning",
-    description:
-      "The AI analyses the task carefully and presents a clear step-by-step explanation.",
+    description: "Breaks problem down into verified steps: Given info, Concepts, Methods & Final conclusion.",
   },
 };
 
+const roleFriendlyNames = {
+  student: "Student Assistant",
+  teacher: "Professor / Teacher",
+  programmer: "Senior Developer",
+  interviewer: "HR / Tech Interviewer",
+  cloud: "Cloud Architect",
+  assignment: "Academic Writer",
+};
+
+/* =========================================================
+   ROLE & TECHNIQUE MANAGEMENT
+   ========================================================= */
+
+function getSelectedRole() {
+  return roleSelector ? roleSelector.value : "student";
+}
+
 function getSelectedRoleText() {
-  return roleSelector.options[
-    roleSelector.selectedIndex
-  ].textContent.trim();
+  const val = getSelectedRole();
+  return roleFriendlyNames[val] || val;
+}
+
+function getSelectedTechnique() {
+  return techniqueSelector ? techniqueSelector.value : "zero-shot";
 }
 
 function getSelectedTechniqueText() {
-  return techniqueSelector.options[
-    techniqueSelector.selectedIndex
-  ].textContent.trim();
+  const val = getSelectedTechnique();
+  const info = techniqueInformation[val];
+  return info ? info.badge : val;
 }
 
 function updateTechniqueInformation() {
-  const selectedTechnique =
-    techniqueInformation[techniqueSelector.value];
+  const selectedTech = getSelectedTechnique();
+  const info = techniqueInformation[selectedTech];
 
-  if (!selectedTechnique) {
-    return;
-  }
+  if (!info) return;
 
-  techniqueBadge.textContent =
-    selectedTechnique.badge;
-
-  techniqueDescription.textContent =
-    selectedTechnique.description;
+  if (techniqueBadge) techniqueBadge.textContent = info.badge;
+  if (techniqueDescription) techniqueDescription.textContent = info.description;
 }
 
 function updateConfigurationPanel() {
   if (currentRole) {
-    currentRole.textContent =
-      getSelectedRoleText();
+    currentRole.textContent = getSelectedRoleText();
   }
-
   if (currentTechnique) {
-    currentTechnique.textContent =
-      getSelectedTechniqueText();
+    currentTechnique.textContent = getSelectedTechniqueText() + " Prompting";
   }
 }
 
+// Handle Role Card Selection
+roleCards.forEach((card) => {
+  card.addEventListener("click", () => {
+    roleCards.forEach((c) => c.classList.remove("active"));
+    card.classList.add("active");
+
+    const role = card.getAttribute("data-role");
+    if (roleSelector) {
+      roleSelector.value = role;
+    }
+
+    updateConfigurationPanel();
+
+    addNotificationMessage(
+      `Role switched to **${getSelectedRoleText()}**. Future queries will follow this persona.`
+    );
+
+    // Auto-close sidebar on mobile if open
+    if (window.innerWidth <= 980 && studioSidebar) {
+      studioSidebar.classList.remove("open");
+    }
+  });
+});
+
+// Handle Technique Chip Selection
+techniqueChips.forEach((chip) => {
+  chip.addEventListener("click", () => {
+    techniqueChips.forEach((c) => c.classList.remove("active"));
+    chip.classList.add("active");
+
+    const tech = chip.getAttribute("data-technique");
+    if (techniqueSelector) {
+      techniqueSelector.value = tech;
+    }
+
+    updateTechniqueInformation();
+    updateConfigurationPanel();
+  });
+});
+
+/* Mobile Sidebar Toggle */
+if (mobileSidebarToggle && studioSidebar) {
+  mobileSidebarToggle.addEventListener("click", () => {
+    studioSidebar.classList.toggle("open");
+  });
+}
+
+/* =========================================================
+   PROMPT PREVIEW BUILDER
+   ========================================================= */
+
 function buildPromptPreview() {
   const roleText = getSelectedRoleText();
-  const techniqueText =
-    getSelectedTechniqueText();
+  const techniqueText = getSelectedTechniqueText();
 
   const userQuestion =
     userInput.value.trim() ||
     lastUserMessage ||
-    "No question entered yet.";
+    "How does machine learning work in simple terms?";
 
-  if (promptPreviewRole) {
-    promptPreviewRole.textContent =
-      roleText;
-  }
-
-  if (promptPreviewTechnique) {
-    promptPreviewTechnique.textContent =
-      techniqueText;
-  }
-
-  if (promptPreviewQuestion) {
-    promptPreviewQuestion.textContent =
-      userQuestion;
-  }
+  if (promptPreviewRole) promptPreviewRole.textContent = roleText;
+  if (promptPreviewTechnique) promptPreviewTechnique.textContent = techniqueText;
 
   const finalPrompt = `
-CHATBOT ROLE:
-${roleText}
+CHATBOT ROLE INSTRUCTIONS:
+Persona: ${roleText}
 
 PROMPT ENGINEERING TECHNIQUE:
-${techniqueText}
+Strategy: ${techniqueText} Prompting
 
-SYSTEM INSTRUCTIONS:
-Respond according to the selected chatbot role.
-Follow the selected prompt-engineering technique.
-Keep the response accurate, clear and suitable for a college student.
-Use headings, bullet points, examples and Markdown formatting when helpful.
-Avoid false or misleading information.
+GENERAL RESPONSE RULES:
+1. Answer the user's actual academic/technical request.
+2. Keep response structured using Markdown (Headings, Bullet points, Code blocks).
+3. Ensure accuracy and adapt depth according to persona.
 
 USER REQUEST:
 ${userQuestion}
 `.trim();
 
   if (finalPromptPreview) {
-    finalPromptPreview.textContent =
-      finalPrompt;
+    finalPromptPreview.textContent = finalPrompt;
   }
 
   return finalPrompt;
 }
 
-function openModal(modal) {
-  if (!modal) {
-    return;
-  }
+/* =========================================================
+   MODAL CONTROLS
+   ========================================================= */
 
+function openModal(modal) {
+  if (!modal) return;
   modal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
 
 function closeModal(modal) {
-  if (!modal) {
-    return;
-  }
-
+  if (!modal) return;
   modal.classList.add("hidden");
   document.body.style.overflow = "";
 }
 
+// About Modal
+if (aboutButton) aboutButton.addEventListener("click", () => openModal(aboutModal));
+if (closeAboutButton) closeAboutButton.addEventListener("click", () => closeModal(aboutModal));
+if (closeAboutFooterButton) closeAboutFooterButton.addEventListener("click", () => closeModal(aboutModal));
+
+// Prompt Modal
+if (viewPromptButton) {
+  viewPromptButton.addEventListener("click", () => {
+    buildPromptPreview();
+    openModal(promptModal);
+  });
+}
+if (closePromptButton) closePromptButton.addEventListener("click", () => closeModal(promptModal));
+if (closePromptFooterButton) closePromptFooterButton.addEventListener("click", () => closeModal(promptModal));
+
+// Copy Prompt Button in Modal
+if (copyPromptButton) {
+  copyPromptButton.addEventListener("click", async () => {
+    const promptText = buildPromptPreview();
+    try {
+      await navigator.clipboard.writeText(promptText);
+      copyPromptButton.textContent = "✅ Copied!";
+      setTimeout(() => {
+        copyPromptButton.textContent = "📋 Copy Prompt";
+      }, 1800);
+    } catch {
+      copyPromptButton.textContent = "Copy Failed";
+      setTimeout(() => {
+        copyPromptButton.textContent = "📋 Copy Prompt";
+      }, 1800);
+    }
+  });
+}
+
+// Dismiss modals on backdrop click & Escape key
+[aboutModal, promptModal].forEach((modal) => {
+  if (modal) {
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal(modal);
+    });
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    closeModal(aboutModal);
+    closeModal(promptModal);
+    if (studioSidebar) studioSidebar.classList.remove("open");
+  }
+});
+
+/* =========================================================
+   CHAT & MESSAGE RENDERING
+   ========================================================= */
+
 function scrollToLatestMessage() {
-  chatMessages.scrollTop =
-    chatMessages.scrollHeight;
+  chatMessages.scrollTo({
+    top: chatMessages.scrollHeight,
+    behavior: "smooth",
+  });
+}
+
+function enhanceCodeBlocks(container) {
+  const pres = container.querySelectorAll("pre");
+  pres.forEach((pre) => {
+    // Check if already enhanced
+    if (pre.parentElement.classList.contains("code-container")) return;
+
+    const code = pre.querySelector("code");
+    const lang = code ? (code.className.match(/language-(\w+)/) || [])[1] || "code" : "code";
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "code-container";
+
+    const header = document.createElement("div");
+    header.className = "code-header";
+    header.innerHTML = `
+      <span>${lang}</span>
+      <button class="copy-snippet-btn" type="button">
+        📋 Copy
+      </button>
+    `;
+
+    const copyBtn = header.querySelector(".copy-snippet-btn");
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(pre.textContent.trim());
+        copyBtn.textContent = "✅ Copied";
+        setTimeout(() => (copyBtn.textContent = "📋 Copy"), 1500);
+      } catch {
+        copyBtn.textContent = "Failed";
+        setTimeout(() => (copyBtn.textContent = "📋 Copy"), 1500);
+      }
+    });
+
+    pre.parentNode.insertBefore(wrapper, pre);
+    wrapper.appendChild(header);
+    wrapper.appendChild(pre);
+  });
 }
 
 function createMessageElement(sender) {
-  const messageElement =
-    document.createElement("div");
+  const row = document.createElement("div");
+  row.className = sender === "user" ? "message-row user-row" : "message-row bot-row";
 
-  messageElement.className =
-    sender === "user"
-      ? "message user-message"
-      : "message bot-message";
+  const avatar = document.createElement("div");
+  avatar.className = sender === "user" ? "message-avatar-halo user-avatar" : "message-avatar-halo bot-avatar";
+  avatar.textContent = sender === "user" ? "You" : "EA";
 
-  const avatarElement =
-    document.createElement("div");
+  const wrapper = document.createElement("div");
+  wrapper.className = "message-bubble-wrapper";
 
-  avatarElement.className = "message-avatar";
+  const bubble = document.createElement("div");
+  bubble.className = sender === "user" ? "message-bubble user-bubble" : "message-bubble bot-bubble";
 
-  avatarElement.textContent =
-    sender === "user" ? "You" : "EA";
+  wrapper.appendChild(bubble);
+  row.appendChild(avatar);
+  row.appendChild(wrapper);
 
-  const wrapperElement =
-    document.createElement("div");
-
-  wrapperElement.className =
-    "message-wrapper";
-
-  const contentElement =
-    document.createElement("div");
-
-  contentElement.className =
-    "message-content";
-
-  wrapperElement.appendChild(contentElement);
-
-  messageElement.appendChild(avatarElement);
-  messageElement.appendChild(wrapperElement);
-
-  return {
-    messageElement,
-    wrapperElement,
-    contentElement,
-  };
+  return { row, wrapper, bubble };
 }
 
-function createResponseActions(
-  wrapperElement,
-  responseText,
-  responseTime,
-  userPrompt
-) {
-  const actionsElement =
-    document.createElement("div");
+function createResponseActions(wrapper, responseText, responseTime, userPrompt) {
+  const bar = document.createElement("div");
+  bar.className = "response-actions-bar";
 
-  actionsElement.className =
-    "response-actions";
+  const latency = document.createElement("div");
+  latency.className = "response-latency";
+  latency.innerHTML = `<span>⚡</span> <span>${responseTime}s</span>`;
 
-  const timeElement =
-    document.createElement("span");
+  const btnGroup = document.createElement("div");
+  btnGroup.className = "response-button-group";
 
-  timeElement.className = "response-time";
+  const copyBtn = document.createElement("button");
+  copyBtn.className = "tool-action-btn";
+  copyBtn.type = "button";
+  copyBtn.innerHTML = `📋 <span>Copy</span>`;
 
-  timeElement.textContent =
-    `⚡ Generated in ${responseTime} sec`;
+  const pdfBtn = document.createElement("button");
+  pdfBtn.className = "tool-action-btn";
+  pdfBtn.type = "button";
+  pdfBtn.innerHTML = `📄 <span>PDF</span>`;
 
-  const buttonGroup =
-    document.createElement("div");
-
-  buttonGroup.className =
-    "response-buttons";
-
-  const copyButton =
-    document.createElement("button");
-
-  copyButton.type = "button";
-  copyButton.className =
-    "response-action-button";
-  copyButton.textContent = "📋 Copy";
-
-  const pdfButton =
-    document.createElement("button");
-
-  pdfButton.type = "button";
-  pdfButton.className =
-    "response-action-button";
-  pdfButton.textContent = "📄 PDF";
-
-  copyButton.addEventListener(
-    "click",
-    async () => {
-      try {
-        await navigator.clipboard.writeText(
-          responseText
-        );
-
-        copyButton.textContent =
-          "✅ Copied";
-
-        setTimeout(() => {
-          copyButton.textContent =
-            "📋 Copy";
-        }, 1500);
-      } catch {
-        copyButton.textContent =
-          "Copy failed";
-
-        setTimeout(() => {
-          copyButton.textContent =
-            "📋 Copy";
-        }, 1500);
-      }
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(responseText);
+      copyBtn.innerHTML = `✅ <span>Copied</span>`;
+      setTimeout(() => (copyBtn.innerHTML = `📋 <span>Copy</span>`), 1500);
+    } catch {
+      copyBtn.innerHTML = `❌ <span>Failed</span>`;
+      setTimeout(() => (copyBtn.innerHTML = `📋 <span>Copy</span>`), 1500);
     }
-  );
-
-  pdfButton.addEventListener("click", () => {
-    downloadResponseAsPDF(
-      responseText,
-      userPrompt
-    );
   });
 
-  buttonGroup.appendChild(copyButton);
-  buttonGroup.appendChild(pdfButton);
+  pdfBtn.addEventListener("click", () => {
+    downloadResponseAsPDF(responseText, userPrompt);
+  });
 
-  actionsElement.appendChild(timeElement);
-  actionsElement.appendChild(buttonGroup);
+  btnGroup.appendChild(copyBtn);
+  btnGroup.appendChild(pdfBtn);
 
-  wrapperElement.appendChild(actionsElement);
+  bar.appendChild(latency);
+  bar.appendChild(btnGroup);
+
+  wrapper.appendChild(bar);
 }
 
-function downloadResponseAsPDF(
-  responseText,
-  userPrompt
-) {
-  if (
-    !window.jspdf ||
-    !window.jspdf.jsPDF
-  ) {
-    alert(
-      "PDF library could not be loaded."
-    );
+function downloadResponseAsPDF(responseText, userPrompt) {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert("PDF library is loading. Please try again in a moment.");
     return;
   }
 
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF();
 
-  const selectedRole =
-    getSelectedRoleText();
+  const selectedRole = getSelectedRoleText();
+  const selectedTechnique = getSelectedTechniqueText();
+  const generatedDate = new Date().toLocaleString();
 
-  const selectedTechnique =
-    getSelectedTechniqueText();
-
-  const generatedDate =
-    new Date().toLocaleString();
-
-  const pageWidth =
-    pdf.internal.pageSize.getWidth();
-
-  const pageHeight =
-    pdf.internal.pageSize.getHeight();
-
-  const margin = 18;
-  const usableWidth =
-    pageWidth - margin * 2;
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 16;
+  const usableWidth = pageWidth - margin * 2;
 
   let currentY = 20;
 
+  // Header Banner
+  pdf.setFillColor(15, 23, 42);
+  pdf.rect(0, 0, pageWidth, 38, "F");
+
+  pdf.setTextColor(255, 255, 255);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(19);
-
-  pdf.text(
-    "EduAssist AI",
-    margin,
-    currentY
-  );
-
-  currentY += 8;
-
-  pdf.setFontSize(11);
-  pdf.setFont("helvetica", "normal");
-
-  pdf.text(
-    "Smart Prompt Engineering Chatbot",
-    margin,
-    currentY
-  );
-
-  currentY += 9;
+  pdf.setFontSize(16);
+  pdf.text("EduAssist AI • Prompt Engineering Studio", margin, 18);
 
   pdf.setFontSize(9);
-  pdf.text(
-    `Generated on: ${generatedDate}`,
-    margin,
-    currentY
-  );
+  pdf.setFont("helvetica", "normal");
+  pdf.setTextColor(148, 163, 184);
+  pdf.text(`Persona: ${selectedRole}  |  Technique: ${selectedTechnique}  |  Date: ${generatedDate}`, margin, 28);
 
-  currentY += 6;
+  currentY = 48;
 
-  pdf.text(
-    `Role: ${selectedRole}`,
-    margin,
-    currentY
-  );
-
-  currentY += 6;
-
-  pdf.text(
-    `Prompt Technique: ${selectedTechnique}`,
-    margin,
-    currentY
-  );
-
-  currentY += 10;
-
-  pdf.setDrawColor(180);
-  pdf.line(
-    margin,
-    currentY,
-    pageWidth - margin,
-    currentY
-  );
-
-  currentY += 10;
-
+  // User Prompt Section
+  pdf.setTextColor(15, 23, 42);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(12);
-
-  pdf.text(
-    "User Prompt",
-    margin,
-    currentY
-  );
-
-  currentY += 7;
+  pdf.setFontSize(11);
+  pdf.text("User Query / Prompt:", margin, currentY);
+  currentY += 6;
 
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(11);
+  pdf.setFontSize(10);
+  pdf.setTextColor(51, 65, 85);
 
-  const promptLines =
-    pdf.splitTextToSize(
-      userPrompt ||
-        lastUserMessage ||
-        "Not available",
-      usableWidth
-    );
-
+  const promptLines = pdf.splitTextToSize(userPrompt || lastUserMessage || "N/A", usableWidth);
   promptLines.forEach((line) => {
-    if (
-      currentY >
-      pageHeight - 20
-    ) {
+    if (currentY > pageHeight - 20) {
       pdf.addPage();
       currentY = 20;
     }
-
-    pdf.text(
-      line,
-      margin,
-      currentY
-    );
-
-    currentY += 6;
+    pdf.text(line, margin, currentY);
+    currentY += 5;
   });
 
   currentY += 6;
+  pdf.setDrawColor(226, 232, 240);
+  pdf.line(margin, currentY, pageWidth - margin, currentY);
+  currentY += 8;
 
+  // Response Section
+  pdf.setTextColor(15, 23, 42);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(12);
-
-  pdf.text(
-    "AI Response",
-    margin,
-    currentY
-  );
-
-  currentY += 7;
+  pdf.setFontSize(11);
+  pdf.text("AI Response:", margin, currentY);
+  currentY += 6;
 
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(11);
+  pdf.setFontSize(9.5);
+  pdf.setTextColor(30, 41, 59);
 
   const cleanResponse = responseText
     .replace(/#{1,6}\s?/g, "")
@@ -498,200 +473,136 @@ function downloadResponseAsPDF(
     .replace(/---+/g, "")
     .trim();
 
-  const responseLines =
-    pdf.splitTextToSize(
-      cleanResponse,
-      usableWidth
-    );
-
+  const responseLines = pdf.splitTextToSize(cleanResponse, usableWidth);
   responseLines.forEach((line) => {
-    if (
-      currentY >
-      pageHeight - 20
-    ) {
+    if (currentY > pageHeight - 20) {
       pdf.addPage();
       currentY = 20;
     }
-
-    pdf.text(
-      line,
-      margin,
-      currentY
-    );
-
-    currentY += 6;
+    pdf.text(line, margin, currentY);
+    currentY += 5;
   });
 
-  pdf.save(
-    "EduAssist-AI-Response.pdf"
-  );
+  pdf.save("EduAssist-Response.pdf");
 }
 
-function addMessage(
-  text,
-  sender,
-  options = {}
-) {
-  const {
-    messageElement,
-    wrapperElement,
-    contentElement,
-  } = createMessageElement(sender);
+function addMessage(text, sender, options = {}) {
+  const { row, wrapper, bubble } = createMessageElement(sender);
 
-  if (
-    sender === "bot" &&
-    typeof marked !== "undefined"
-  ) {
-    contentElement.innerHTML =
-      marked.parse(text);
+  if (sender === "bot" && typeof marked !== "undefined") {
+    bubble.innerHTML = marked.parse(text);
+    enhanceCodeBlocks(bubble);
   } else {
-    contentElement.textContent = text;
+    bubble.textContent = text;
   }
 
-  if (
-    sender === "bot" &&
-    options.showActions
-  ) {
-    createResponseActions(
-      wrapperElement,
-      text,
-      options.responseTime,
-      options.userPrompt
-    );
+  if (sender === "bot" && options.showActions) {
+    createResponseActions(wrapper, text, options.responseTime, options.userPrompt);
   }
 
-  chatMessages.appendChild(
-    messageElement
-  );
-
+  chatMessages.appendChild(row);
   scrollToLatestMessage();
 
-  return messageElement;
+  return row;
+}
+
+function addNotificationMessage(text) {
+  const noticeRow = document.createElement("div");
+  noticeRow.className = "message-row bot-row";
+  noticeRow.style.margin = "4px 0";
+
+  const bubble = document.createElement("div");
+  bubble.className = "message-bubble bot-bubble";
+  bubble.style.padding = "8px 14px";
+  bubble.style.fontSize = "0.82rem";
+  bubble.style.background = "rgba(99, 102, 241, 0.12)";
+  bubble.style.border = "1px solid rgba(99, 102, 241, 0.3)";
+  bubble.style.color = "#c7d2fe";
+
+  if (typeof marked !== "undefined") {
+    bubble.innerHTML = marked.parse(text);
+  } else {
+    bubble.textContent = text;
+  }
+
+  noticeRow.appendChild(bubble);
+  chatMessages.appendChild(noticeRow);
+  scrollToLatestMessage();
 }
 
 function addTypingIndicator() {
-  const {
-    messageElement,
-    contentElement,
-  } = createMessageElement("bot");
-
-  contentElement.classList.add(
-    "typing-message"
-  );
-
-  contentElement.innerHTML = `
+  const { row, bubble } = createMessageElement("bot");
+  bubble.className = "typing-bubble";
+  bubble.innerHTML = `
     <span>✨ EduAssist is generating</span>
-
-    <span class="typing-dots">
-      <span>.</span>
-      <span>.</span>
-      <span>.</span>
-    </span>
+    <div class="typing-pulse-dots">
+      <span></span><span></span><span></span>
+    </div>
   `;
 
-  chatMessages.appendChild(
-    messageElement
-  );
-
+  chatMessages.appendChild(row);
   scrollToLatestMessage();
-
-  return messageElement;
+  return row;
 }
 
 function resetInputHeight() {
   userInput.style.height = "auto";
 }
 
-function setChatControlsDisabled(
-  isDisabled
-) {
+function setChatControlsDisabled(isDisabled) {
   sendButton.disabled = isDisabled;
   userInput.disabled = isDisabled;
-  roleSelector.disabled = isDisabled;
-  techniqueSelector.disabled =
-    isDisabled;
-
-  if (viewPromptButton) {
-    viewPromptButton.disabled =
-      isDisabled;
-  }
 }
+
+/* =========================================================
+   SEND MESSAGE HANDLER
+   ========================================================= */
 
 async function sendMessage(message) {
   lastUserMessage = message;
 
-  const selectedRole =
-    roleSelector.value;
-
-  const selectedTechnique =
-    techniqueSelector.value;
+  const selectedRole = getSelectedRole();
+  const selectedTechnique = getSelectedTechnique();
 
   addMessage(message, "user");
 
   userInput.value = "";
   resetInputHeight();
-
   setChatControlsDisabled(true);
 
-  const typingIndicator =
-    addTypingIndicator();
-
-  const startTime =
-    performance.now();
+  const typingRow = addTypingIndicator();
+  const startTime = performance.now();
 
   try {
-    const response = await fetch(
-      "/api/chat",
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-
-        body: JSON.stringify({
-          message,
-          role: selectedRole,
-          technique:
-            selectedTechnique,
-        }),
-      }
-    );
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        role: selectedRole,
+        technique: selectedTechnique,
+      }),
+    });
 
     let data;
-
     try {
       data = await response.json();
     } catch {
-      throw new Error(
-        "The server returned an invalid response."
-      );
+      throw new Error("Server returned an invalid response.");
     }
 
-    typingIndicator.remove();
+    typingRow.remove();
 
     if (!response.ok) {
-      throw new Error(
-        data.message ||
-          "EduAssist could not generate an answer."
-      );
+      throw new Error(data.message || "Failed to generate response.");
     }
 
     if (!data.reply) {
-      throw new Error(
-        "The AI returned an empty response."
-      );
+      throw new Error("Gemini returned an empty response.");
     }
 
-    const endTime =
-      performance.now();
-
-    const responseTime =
-      (
-        (endTime - startTime) /
-        1000
-      ).toFixed(2);
+    const endTime = performance.now();
+    const responseTime = ((endTime - startTime) / 1000).toFixed(2);
 
     addMessage(data.reply, "bot", {
       showActions: true,
@@ -699,15 +610,12 @@ async function sendMessage(message) {
       userPrompt: message,
     });
   } catch (error) {
-    if (typingIndicator.isConnected) {
-      typingIndicator.remove();
+    if (typingRow.isConnected) {
+      typingRow.remove();
     }
 
     addMessage(
-      `Error: ${
-        error.message ||
-        "Something went wrong. Please try again."
-      }`,
+      `⚠️ **Error**: ${error.message || "Something went wrong. Please try again."}`,
       "bot"
     );
   } finally {
@@ -716,288 +624,68 @@ async function sendMessage(message) {
   }
 }
 
-/* Chat form */
+/* =========================================================
+   EVENT LISTENERS
+   ========================================================= */
 
-chatForm.addEventListener(
-  "submit",
-  (event) => {
-    event.preventDefault();
-
-    const message =
-      userInput.value.trim();
-
-    if (!message) {
-      userInput.focus();
-      return;
-    }
-
-    sendMessage(message);
-  }
-);
-
-/* Enter to send */
-
-userInput.addEventListener(
-  "keydown",
-  (event) => {
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey
-    ) {
-      event.preventDefault();
-      chatForm.requestSubmit();
-    }
-  }
-);
-
-/* Auto-resize input */
-
-userInput.addEventListener(
-  "input",
-  () => {
-    resetInputHeight();
-
-    userInput.style.height =
-      `${Math.min(
-        userInput.scrollHeight,
-        130
-      )}px`;
-  }
-);
-
-/* Suggestion buttons */
-
-suggestionButtons.forEach(
-  (button) => {
-    button.addEventListener(
-      "click",
-      () => {
-        userInput.value =
-          button.textContent.trim();
-
-        resetInputHeight();
-
-        userInput.style.height =
-          `${Math.min(
-            userInput.scrollHeight,
-            130
-          )}px`;
-
-        userInput.focus();
-      }
-    );
-  }
-);
-
-/* Clear chat */
-
-clearButton.addEventListener(
-  "click",
-  () => {
-    const shouldClear =
-      window.confirm(
-        "Are you sure you want to clear the conversation?"
-      );
-
-    if (!shouldClear) {
-      return;
-    }
-
-    chatMessages.innerHTML = "";
-    lastUserMessage = "";
-
-    addMessage(
-      `Hello! The conversation has been cleared.
-
-Choose a chatbot role and a prompt-engineering technique, then ask your question.`,
-      "bot"
-    );
-
-    userInput.value = "";
-    resetInputHeight();
+// Form Submission
+chatForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const message = userInput.value.trim();
+  if (!message) {
     userInput.focus();
+    return;
   }
-);
+  sendMessage(message);
+});
 
-/* Technique selection */
-
-techniqueSelector.addEventListener(
-  "change",
-  () => {
-    updateTechniqueInformation();
-    updateConfigurationPanel();
+// Keydown (Enter to send, Shift+Enter for newline)
+userInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    chatForm.requestSubmit();
   }
-);
+});
 
-/* Role selection */
+// Auto-expand Textarea
+userInput.addEventListener("input", () => {
+  resetInputHeight();
+  userInput.style.height = `${Math.min(userInput.scrollHeight, 140)}px`;
+});
 
-roleSelector.addEventListener(
-  "change",
-  () => {
-    updateConfigurationPanel();
+// Suggestion Prompts / Starter Chips
+suggestionButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const text = btn.textContent.trim();
+    userInput.value = text;
+    resetInputHeight();
+    userInput.style.height = `${Math.min(userInput.scrollHeight, 140)}px`;
+    userInput.focus();
+  });
+});
 
-    const selectedRoleText =
-      getSelectedRoleText();
+// Clear Conversation
+clearButton.addEventListener("click", () => {
+  const confirmed = window.confirm("Are you sure you want to clear this workspace conversation?");
+  if (!confirmed) return;
 
-    addMessage(
-      `Role changed to **${selectedRoleText}**. My next response will follow this role.`,
-      "bot"
-    );
-  }
-);
+  chatMessages.innerHTML = `
+    <div class="message-row bot-row">
+      <div class="message-avatar-halo bot-avatar"><span>EA</span></div>
+      <div class="message-bubble-wrapper">
+        <div class="message-bubble bot-bubble">
+          Workspace cleared! Select a role & strategy, then type your question below.
+        </div>
+      </div>
+    </div>
+  `;
+  lastUserMessage = "";
+  userInput.value = "";
+  resetInputHeight();
+  userInput.focus();
+});
 
-/* About modal */
-
-if (aboutButton) {
-  aboutButton.addEventListener(
-    "click",
-    () => {
-      openModal(aboutModal);
-    }
-  );
-}
-
-if (closeAboutButton) {
-  closeAboutButton.addEventListener(
-    "click",
-    () => {
-      closeModal(aboutModal);
-    }
-  );
-}
-
-if (closeAboutFooterButton) {
-  closeAboutFooterButton.addEventListener(
-    "click",
-    () => {
-      closeModal(aboutModal);
-    }
-  );
-}
-
-/* Prompt preview modal */
-
-if (viewPromptButton) {
-  viewPromptButton.addEventListener(
-    "click",
-    () => {
-      buildPromptPreview();
-      openModal(promptModal);
-    }
-  );
-}
-
-if (closePromptButton) {
-  closePromptButton.addEventListener(
-    "click",
-    () => {
-      closeModal(promptModal);
-    }
-  );
-}
-
-if (closePromptFooterButton) {
-  closePromptFooterButton.addEventListener(
-    "click",
-    () => {
-      closeModal(promptModal);
-    }
-  );
-}
-
-/* Copy final prompt */
-
-if (copyPromptButton) {
-  copyPromptButton.addEventListener(
-    "click",
-    async () => {
-      const promptText =
-        buildPromptPreview();
-
-      try {
-        await navigator.clipboard.writeText(
-          promptText
-        );
-
-        copyPromptButton.textContent =
-          "✅ Copied";
-
-        setTimeout(() => {
-          copyPromptButton.textContent =
-            "📋 Copy Prompt";
-        }, 1500);
-      } catch {
-        copyPromptButton.textContent =
-          "Copy failed";
-
-        setTimeout(() => {
-          copyPromptButton.textContent =
-            "📋 Copy Prompt";
-        }, 1500);
-      }
-    }
-  );
-}
-
-/* Close modal by clicking overlay */
-
-if (aboutModal) {
-  aboutModal.addEventListener(
-    "click",
-    (event) => {
-      if (
-        event.target === aboutModal
-      ) {
-        closeModal(aboutModal);
-      }
-    }
-  );
-}
-
-if (promptModal) {
-  promptModal.addEventListener(
-    "click",
-    (event) => {
-      if (
-        event.target === promptModal
-      ) {
-        closeModal(promptModal);
-      }
-    }
-  );
-}
-
-/* Escape key closes modals */
-
-document.addEventListener(
-  "keydown",
-  (event) => {
-    if (event.key !== "Escape") {
-      return;
-    }
-
-    if (
-      aboutModal &&
-      !aboutModal.classList.contains(
-        "hidden"
-      )
-    ) {
-      closeModal(aboutModal);
-    }
-
-    if (
-      promptModal &&
-      !promptModal.classList.contains(
-        "hidden"
-      )
-    ) {
-      closeModal(promptModal);
-    }
-  }
-);
-
-/* Initial setup */
-
+// Initial Setup
 updateTechniqueInformation();
 updateConfigurationPanel();
 userInput.focus();
