@@ -307,10 +307,21 @@ ${cleanedMessage}
       apiKey: process.env.GEMINI_API_KEY,
     });
 
-    const response = await client.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: finalPrompt,
-    });
+    const modelName = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+
+    let response;
+    try {
+      response = await client.models.generateContent({
+        model: modelName,
+        contents: finalPrompt,
+      });
+    } catch (primaryErr) {
+      console.warn(`Primary model (${modelName}) error: ${primaryErr?.message}. Falling back to gemini-3.5-flash.`);
+      response = await client.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: finalPrompt,
+      });
+    }
 
     const reply = response.text?.trim();
 
