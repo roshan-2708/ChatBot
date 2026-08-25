@@ -1,9 +1,15 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import { GoogleGenAI } from "@google/genai";
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const publicPath = path.join(__dirname, "public");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -15,14 +21,9 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-/*
-  This works locally.
-
-  On Vercel, files inside public/ are served automatically.
-  express.static() may be ignored by Vercel, so the root
-  route below redirects users to public/index.html.
-*/
-app.use(express.static("public"));
+// Serve static assets from public folder at root and at /public
+app.use(express.static(publicPath));
+app.use("/public", express.static(publicPath));
 
 /* --------------------------------------------------
    Environment-variable validation
@@ -213,6 +214,14 @@ app.get("/", (req, res) => {
 });
 
 /* --------------------------------------------------
+   Favicon handler
+-------------------------------------------------- */
+
+app.get("/favicon.ico", (req, res) => {
+  res.status(204).end();
+});
+
+/* --------------------------------------------------
    Health-check route
 -------------------------------------------------- */
 
@@ -337,10 +346,12 @@ ${cleanedMessage}
       userMessage =
         "The Gemini free API limit has been reached. Please wait and try again.";
     } else if (
+      rawError.includes("404") ||
+      rawError.toLowerCase().includes("not found") ||
       rawError.toLowerCase().includes("model")
     ) {
       userMessage =
-        "The selected Gemini model is unavailable. Check the model name.";
+        "The selected Gemini model is unavailable or not found. Check the model name.";
     }
 
     return res.status(500).json({
@@ -348,6 +359,20 @@ ${cleanedMessage}
       message: userMessage,
     });
   }
+});
+
+/* --------------------------------------------------
+   Catch-all fallback middleware (Express 5 compatible)
+-------------------------------------------------- */
+
+app.use((req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({
+      success: false,
+      message: `API endpoint ${req.originalUrl} not found.`,
+    });
+  }
+  res.sendFile(path.join(publicPath, "index.html"));
 });
 
 /* --------------------------------------------------
