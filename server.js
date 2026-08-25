@@ -303,15 +303,16 @@ USER REQUEST:
 ${cleanedMessage}
 `.trim();
 
-    const interaction =
-      await ai.interactions.create({
-        model: "gemini-3.6-flash",
-        input: finalPrompt,
-        store: false,
-      });
+    const client = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+    });
 
-    const reply =
-      interaction.output_text?.trim();
+    const response = await client.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: finalPrompt,
+    });
+
+    const reply = response.text?.trim();
 
     if (!reply) {
       throw new Error(
