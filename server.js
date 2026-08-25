@@ -307,29 +307,38 @@ ${cleanedMessage}
       apiKey: process.env.GEMINI_API_KEY,
     });
 
-    const modelName = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+    const candidateModels = [
+      process.env.GEMINI_MODEL,
+      "gemini-3.6-flash",
+      "gemini-3.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
+      "gemini-1.5-pro",
+    ].filter(Boolean);
 
-    let response;
-    try {
-      response = await client.models.generateContent({
-        model: modelName,
-        contents: finalPrompt,
-      });
-    } catch (primaryErr) {
-      console.warn(`Primary model (${modelName}) error: ${primaryErr?.message}. Falling back to gemini-3.5-flash.`);
-      response = await client.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: finalPrompt,
-      });
+    let response = null;
+    let lastError = null;
+
+    for (const modelCandidate of candidateModels) {
+      try {
+        response = await client.models.generateContent({
+          model: modelCandidate,
+          contents: finalPrompt,
+        });
+        if (response && response.text) {
+          break;
+        }
+      } catch (err) {
+        console.warn(`Model candidate ${modelCandidate} failed:`, err?.message || err);
+        lastError = err;
+      }
     }
 
-    const reply = response.text?.trim();
-
-    if (!reply) {
-      throw new Error(
-        "Gemini returned an empty response."
-      );
+    if (!response || !response.text) {
+      throw lastError || new Error("All candidate Gemini models failed to generate a response.");
     }
+
+    const reply = response.text.trim();
 
     return res.status(200).json({
       success: true,
@@ -347,23 +356,22 @@ ${cleanedMessage}
 
     if (
       rawError.includes("401") ||
-      rawError.toLowerCase().includes("unauthenticated")
+      rawError.toLowerCase().includes("unauthenticated") ||
+      rawError.toLowerCase().includes("invalid api key")
     ) {
       userMessage =
-        "Gemini authentication failed. Check the GEMINI_API_KEY environment variable.";
+        "Gemini authentication failed. Check the GEMINI_API_KEY environment variable on your server.";
     } else if (
       rawError.includes("429") ||
       rawError.toLowerCase().includes("quota")
     ) {
       userMessage =
-        "The Gemini free API limit has been reached. Please wait and try again.";
+        "The Gemini free API limit has been reached. Please wait a moment and try again.";
     } else if (
       rawError.includes("404") ||
-      rawError.toLowerCase().includes("not found") ||
-      rawError.toLowerCase().includes("model")
+      rawError.toLowerCase().includes("not found")
     ) {
-      userMessage =
-        "The selected Gemini model is unavailable or not found. Check the model name.";
+      userMessage = `Gemini API error: ${rawError}`;
     }
 
     return res.status(500).json({
